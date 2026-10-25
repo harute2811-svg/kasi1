@@ -1,0 +1,713 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Dashboard Pro - Ultimate Edition</title>
+    <style>
+        :root {
+            --bg-color: #040711;
+            --card-bg: rgba(19, 27, 46, 0.4);
+            --text-main: #f8fafc;
+            --text-sub: #64748b;
+            --accent: #38bdf8;
+            --accent-orange: #fb923c;
+            --border: rgba(56, 189, 248, 0.2);
+            --eew-bg: #ef4444;
+            --glow: 0 0 15px rgba(56, 189, 248, 0.15);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', sans-serif;
+            background: radial-gradient(circle at center, #0c152b 0%, #040711 100%);
+            color: var(--text-main);
+            height: 100vh;
+            overflow: hidden;
+            padding: 1.25rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+            position: relative;
+        }
+
+        /* 画面全体を覆う極大緊急地震速報オーバーレイ（5秒自動消去） */
+        #eew-fullscreen-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: var(--eew-bg);
+            color: #ffffff;
+            z-index: 99999;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+            text-align: center;
+            box-shadow: inset 0 0 100px rgba(0,0,0,0.8);
+            animation: pulse-bg 0.5s infinite alternate;
+        }
+
+        @keyframes pulse-bg {
+            0% { background-color: #b91c1c; }
+            100% { background-color: #ef4444; }
+        }
+
+        #eew-overlay-title {
+            font-size: 4.5rem;
+            font-weight: 900;
+            margin-bottom: 2rem;
+            letter-spacing: 0.1em;
+            text-shadow: 0 4px 20px rgba(0,0,0,0.6);
+        }
+
+        #eew-overlay-text {
+            font-size: 2.2rem;
+            font-weight: 700;
+            line-height: 1.6;
+            max-width: 85%;
+            text-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+
+        /* 10インチタブレット横置き最適化グリッド */
+        .container {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr 1fr;
+            grid-template-rows: 1.1fr 0.9fr;
+            gap: 1.25rem;
+            flex: 1;
+        }
+
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
+            border-radius: 1.25rem;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            box-shadow: var(--glow);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(56, 189, 248, 0.4), transparent);
+        }
+
+        .card-title {
+            font-size: 0.9rem;
+            color: var(--accent);
+            margin-bottom: 1rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* 配置設定 */
+        .clock-card { grid-column: 1; grid-row: 1; justify-content: center; }
+        .weather-card { grid-column: 1; grid-row: 2; }
+        .calendar-card { grid-column: 2; grid-row: 1 / span 2; }
+        .earthquake-card { grid-column: 3; grid-row: 1; justify-content: center; }
+        .news-card { grid-column: 3; grid-row: 2; }
+
+        /* 特製立体パネルパタパタ時計 */
+        .clock-container { text-align: center; }
+        #time-display {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.35rem;
+            font-feature-settings: "tnum";
+            margin-bottom: 0.5rem;
+        }
+        .flip-unit {
+            background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 0.5rem;
+            padding: 0.5rem 0.6rem;
+            font-size: 3.8rem;
+            font-weight: 800;
+            line-height: 1;
+            color: #ffffff;
+            position: relative;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.5), inset 0 2px 4px rgba(255,255,255,0.1);
+        }
+        .flip-unit::after {
+            content: '';
+            position: absolute;
+            left: 0; top: 50%; width: 100%; height: 1px;
+            background: rgba(0, 0, 0, 0.4);
+            box-shadow: 0 1px 1px rgba(255,255,255,0.07);
+        }
+        .time-separator {
+            font-size: 3rem;
+            font-weight: 700;
+            color: var(--accent);
+            animation: blink 1s infinite;
+            line-height: 1;
+            margin: 0 -0.1rem;
+        }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
+        #time-sec {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--accent);
+            background: rgba(56, 189, 248, 0.08);
+            border: 1px solid rgba(56, 189, 248, 0.2);
+            border-radius: 0.4rem;
+            padding: 0.3rem 0.5rem;
+            margin-left: 0.5rem;
+            align-self: center;
+            box-shadow: inset 0 0 10px rgba(56, 189, 248, 0.1);
+        }
+        #date {
+            font-size: 1.15rem;
+            color: var(--text-main);
+            margin-top: 0.5rem;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+        }
+
+        /* 天気カード */
+        .weather-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 100%;
+            gap: 1rem;
+        }
+        .weather-main {
+            text-align: center;
+            background: rgba(255,255,255,0.02);
+            padding: 0.75rem;
+            border-radius: 0.75rem;
+            border: 1px solid rgba(255,255,255,0.03);
+            min-width: 6.5rem;
+        }
+        #weather-icon { font-size: 2.8rem; line-height: 1.1; }
+        #weather-text { font-size: 0.95rem; font-weight: 700; margin-top: 0.25rem; color: #ffffff; }
+        .weather-right {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        #city-name-display {
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+        .weather-details {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.4rem;
+            font-size: 0.85rem;
+            color: var(--text-sub);
+        }
+        .weather-details div {
+            background: rgba(0,0,0,0.15);
+            padding: 0.35rem 0.5rem;
+            border-radius: 0.4rem;
+            border: 1px solid rgba(255,255,255,0.02);
+        }
+        .weather-details span { color: var(--text-main); font-weight: 600; font-feature-settings: "tnum"; }
+        #gps-btn {
+            background: linear-gradient(135deg, rgba(56, 189, 248, 0.2) 0%, rgba(56, 189, 248, 0.05) 100%);
+            color: var(--accent);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            border-radius: 0.5rem;
+            padding: 0.35rem;
+            font-weight: 700;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        #gps-btn:hover { background: rgba(56, 189, 248, 0.25); }
+
+        /* カレンダー */
+        .cal-header {
+            font-size: 1.3rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            text-align: center;
+            color: #ffffff;
+            letter-spacing: 0.05em;
+        }
+        .cal-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 0.5rem;
+            text-align: center;
+            font-size: 0.95rem;
+        }
+        .day-name { font-weight: 700; color: var(--text-sub); padding-bottom: 0.5rem; font-size: 0.85rem; }
+        .day-name:nth-child(1) { color: #f87171; }
+        .day-name:nth-child(7) { color: #60a5fa; }
+        .day {
+            padding: 0.5rem 0;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            color: #e2e8f0;
+            background: rgba(255,255,255,0.01);
+            border: 1px solid transparent;
+        }
+        .day.today {
+            background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+            color: #ffffff;
+            font-weight: 800;
+            box-shadow: 0 4px 10px rgba(3, 105, 161, 0.4);
+            border: 1px solid var(--accent);
+        }
+        .day.empty { color: transparent; background: transparent; border: none; }
+
+        /* 地震情報カード (横幅いっぱい仕様) */
+        .eq-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            height: 100%;
+            gap: 1.5rem;
+        }
+        .eq-badge-box {
+            text-align: center;
+        }
+        .eq-label {
+            font-size: 0.75rem;
+            color: var(--text-sub);
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+            text-transform: uppercase;
+        }
+        #eq-intensity-badge {
+            font-size: 2rem;
+            font-weight: 900;
+            background: rgba(251, 146, 60, 0.1);
+            color: var(--accent-orange);
+            border: 1px solid rgba(251, 146, 60, 0.2);
+            padding: 0.4rem 1.25rem;
+            border-radius: 0.75rem;
+            display: inline-block;
+            box-shadow: 0 0 15px rgba(251, 146, 60, 0.1);
+            min-width: 6rem;
+        }
+        .eq-details-box {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .eq-detail-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px dashed rgba(255,255,255,0.05);
+            padding-bottom: 0.35rem;
+            font-size: 0.95rem;
+        }
+        .eq-detail-item:last-child { border-bottom: none; padding-bottom: 0; }
+        .eq-detail-label { color: var(--text-sub); font-weight: 600; font-size: 0.85rem; }
+        #eq-epicenter, #eq-time { color: #ffffff; font-weight: 700; }
+
+        /* ニュースカード */
+        .news-list { list-style: none; display: flex; flex-direction: column; gap: 0.6rem; height: 100%; }
+        .news-item {
+            background: rgba(0, 0, 0, 0.15);
+            border-radius: 0.5rem;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid rgba(255,255,255,0.01);
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+        }
+        .news-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .news-tag {
+            background: rgba(56, 189, 248, 0.1);
+            color: var(--accent);
+            font-size: 0.65rem;
+            font-weight: 700;
+            padding: 0.1rem 0.35rem;
+            border-radius: 0.25rem;
+            text-transform: uppercase;
+        }
+        .news-time { font-size: 0.7rem; color: var(--text-sub); font-feature-settings: "tnum"; }
+        .news-title {
+            font-size: 0.85rem;
+            line-height: 1.35;
+            color: #e2e8f0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-weight: 500;
+        }
+
+        /* テストボタン設置パネル */
+        .test-panel {
+            position: absolute;
+            bottom: 6px;
+            right: 6px;
+            display: flex;
+            gap: 6px;
+            z-index: 100000;
+        }
+        .test-panel button {
+            background: rgba(255,255,255,0.02);
+            color: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.03);
+            padding: 3px 8px;
+            font-size: 0.65rem;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .test-panel button:hover { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.3); }
+    </style>
+</head>
+<body>
+
+    <!-- 全画面緊急地震速報ジャックパネル (5秒自動消去) -->
+    <div id="eew-fullscreen-overlay">
+        <div id="eew-overlay-title">⚠ 緊急地震速報 ⚠</div>
+        <div id="eew-overlay-text">【LIVE配信警告】ただちに身の安全を確保してください。強い揺れに警戒してください。（5秒後に自動復帰します）</div>
+    </div>
+
+    <div class="container">
+        <!-- 1. 時計（立体フリップクロック調） -->
+        <div class="card clock-card">
+            <div class="clock-container">
+                <div id="time-display">
+                    <div class="flip-unit" id="t-h1">0</div><div class="flip-unit" id="t-h2">0</div>
+                    <div class="time-separator">:</div>
+                    <div class="flip-unit" id="t-m1">0</div><div class="flip-unit" id="t-m2">0</div>
+                    <div id="time-sec">00</div>
+                </div>
+                <div id="date">2026年10月25日 (日)</div>
+            </div>
+        </div>
+
+        <!-- 2. カレンダー -->
+        <div class="card calendar-card">
+            <div class="card-title">📅 Calendar</div>
+            <div class="cal-header" id="cal-month-year">2026年 10月</div>
+            <div class="cal-grid" id="calendar-grid"></div>
+        </div>
+
+        <!-- 3. 横幅拡大版 地震情報モニター -->
+        <div class="card earthquake-card">
+            <div class="card-title">🌋 Earthquake Information (LIVE)</div>
+            <div class="eq-container">
+                <div class="eq-badge-box">
+                    <div class="eq-label">MAX INTENSITY</div>
+                    <div id="eq-intensity-badge">---</div>
+                </div>
+                <div class="eq-details-box">
+                    <div class="eq-detail-item">
+                        <span class="eq-detail-label">震源地:</span>
+                        <span id="eq-epicenter">各地の震度を常時監視中</span>
+                    </div>
+                    <div class="eq-detail-item">
+                        <span class="eq-detail-label">発生時刻:</span>
+                        <span id="eq-time">--:--</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. 気象情報モニター（GPS逆引き対応） -->
+        <div class="card weather-card">
+            <div class="card-title">🌤 Weather Monitor</div>
+            <div class="weather-info">
+                <div class="weather-main">
+                    <div id="weather-icon">🛰</div>
+                    <div id="weather-text">データ通信中</div>
+                </div>
+                <div class="weather-right">
+                    <div id="city-name-display">愛知県東海市</div>
+                    <div class="weather-details">
+                        <div>気温: <span id="w-temp">--.-</span> °C</div>
+                        <div>湿度: <span id="w-humidity">--</span>%</div>
+                        <div>風速: <span id="w-wind">--.-</span> m/s</div>
+                    </div>
+                    <button id="gps-btn" onclick="fetchLocationGPS()">📍 現在地を取得</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. ニュースヘッドライン -->
+        <div class="card news-card">
+            <div class="card-title">📰 Latest Headline News</div>
+            <ul class="news-list" id="news-list">
+                <li class="news-item">
+                    <div class="news-meta"><span class="news-tag">INFO</span><span class="news-time">--:--</span></div>
+                    <div class="news-title">ニュースフィードを読み込んでいます...</div>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- 隠し開発・テスト用パネル -->
+    <div class="test-panel">
+        <button onclick="triggerTestEEW()">EEW全画面ジャック(5秒)</button>
+        <button onclick="triggerTestEarthquake()">震度速報テスト表示</button>
+    </div>
+
+    <script>
+        // --- 1. 時計処理（フリップ型独立分離表現） ---
+        function updateClock() {
+            const now = new Date();
+            const h = String(now.getHours()).padStart(2, '0');
+            const m = String(now.getMinutes()).padStart(2, '0');
+            const s = String(now.getSeconds()).padStart(2, '0');
+            
+            document.getElementById('t-h1').textContent = h[0];
+            document.getElementById('t-h2').textContent = h[1];
+            document.getElementById('t-m1').textContent = m[0];
+            document.getElementById('t-m2').textContent = m[1];
+            document.getElementById('time-sec').textContent = s;
+
+            const year = now.getFullYear();
+            const month = now.getMonth() + 1;
+            const date = now.getDate();
+            const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
+            document.getElementById('date').textContent = `${year}年${month}月${date}日 (${dayNames[now.getDay()]})`;
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // --- 2. カレンダー自動構築 ---
+        function generateCalendar() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = now.getMonth();
+            document.getElementById('cal-month-year').textContent = `${year}年 ${month + 1}月`;
+            const firstDay = new Date(year, month, 1).getDay();
+            const lastDate = new Date(year, month + 1, 0).getDate();
+            const grid = document.getElementById('calendar-grid');
+            grid.innerHTML = '';
+            ['日', '月', '火', '水', '木', '金', '土'].forEach(n => {
+                const el = document.createElement('div'); el.className = 'day-name'; el.textContent = n; grid.appendChild(el);
+            });
+            for (let i = 0; i < firstDay; i++) {
+                const el = document.createElement('div'); el.className = 'day empty'; grid.appendChild(el);
+            }
+            for (let d = 1; d <= lastDate; d++) {
+                const el = document.createElement('div'); el.className = 'day'; el.textContent = d;
+                if (d === now.getDate()) el.classList.add('today');
+                grid.appendChild(el);
+            }
+        }
+        generateCalendar();
+
+        // --- 3. 地震情報リアルタイムパース（バグ完全修正版） ---
+        const scaleMap = {
+            "10": "震度1", "20": "震度2", "30": "震度3", "40": "震度4",
+            "45": "震度5弱", "50": "震度5強", "55": "震度6弱", "60": "震度6強", "70": "震度7"
+        };
+        let lastEqTime = "";
+
+        async function checkEarthquake() {
+            try {
+                const res = await fetch('https://api.p2pquake.net/v2/history?codes=551&limit=1');
+                if (!res.ok) return;
+                const data = await res.json();
+                if (data && data.length > 0) {
+                    const eq = data[0];
+                    const reportTime = eq.earthquake.time;
+                    
+                    if (reportTime !== lastEqTime) {
+                        lastEqTime = reportTime;
+                        const badge = document.getElementById('eq-intensity-badge');
+                        
+                        // APIから渡されるmaxScaleプロパティ値を文字列表現にコンバート
+                        const rawScale = String(eq.earthquake.maxScale);
+                        badge.textContent = scaleMap[rawScale] || "震度不明";
+                        
+                        // 震度レベルに応じたバッジのネオン発光カラーの条件分岐
+                        if (parseInt(rawScale) >= 45) {
+                            badge.style.background = "rgba(239, 68, 68, 0.15)";
+                            badge.style.color = "#ef4444";
+                            badge.style.borderColor = "rgba(239, 68, 68, 0.3)";
+                        } else {
+                            badge.style.background = "rgba(251, 146, 60, 0.1)";
+                            badge.style.color = "var(--accent-orange)";
+                            badge.style.borderColor = "rgba(2fb, 146, 60, 0.2)";
+                        }
+                        
+                        document.getElementById('eq-epicenter').textContent = eq.earthquake.hypocenter.name || "調査中";
+                        
+                        const tParts = reportTime.split(' ');
+                        document.getElementById('eq-time').textContent = tParts.length > 1 ? tParts[1].substring(0, 5) : reportTime;
+                    }
+                }
+            } catch (e) { console.error("地震情報パースエラー", e); }
+        }
+        setInterval(checkEarthquake, 3000);
+        checkEarthquake();
+
+        // --- 4. 緊急地震速報（EEW）バックグラウンド常時監視 ---
+        let lastEEWTime = "";
+        async function checkEEW() {
+            try {
+                const res = await fetch('https://api.p2pquake.net/v2/history?codes=554&limit=1');
+                if (!res.ok) return;
+                const data = await res.json();
+                if (data && data.length > 0) {
+                    const eew = data[0];
+                    const reportTime = eew.time;
+                    const timeDiff = new Date() - new Date(reportTime);
+                    if (reportTime !== lastEEWTime && timeDiff < 60000) {
+                        lastEEWTime = reportTime;
+                        triggerEEWOverlay(eew.earthquake?.hypocenter?.name, eew.earthquake?.maxIntensity);
+                    }
+                }
+            } catch (e) { console.error("EEW監視エラー", e); }
+        }
+        setInterval(checkEEW, 2000);
+
+        function triggerEEWOverlay(hypo, intensity) {
+            const overlay = document.getElementById('eew-fullscreen-overlay');
+            const text = document.getElementById('eew-overlay-text');
+            const hName = hypo || "調査中";
+            const iName = intensity ? intensity.replace('楼', '弱').replace('架构', '強') : "強い揺れ";
+            text.textContent = `【速報報知】震源：${hName}付近 最大震度：${iName}の予測。周囲の状況を確認し、ただちに身の安全を確保してください。`;
+            overlay.style.display = "flex";
+            setTimeout(() => { overlay.style.display = "none"; }, 5000);
+        }
+
+        function triggerTestEEW() {
+            triggerEEWOverlay("テスト震源地域群", "5弱");
+        }
+
+        function triggerTestEarthquake() {
+            const badge = document.getElementById('eq-intensity-badge');
+            badge.textContent = "震度5弱";
+            badge.style.background = "rgba(239, 68, 68, 0.15)";
+            badge.style.color = "#ef4444";
+            badge.style.borderColor = "rgba(239, 68, 68, 0.3)";
+            document.getElementById('eq-epicenter').textContent = "テストシミュレーション震源地方";
+            document.getElementById('eq-time').textContent = "14:05";
+        }
+
+        // --- 5. GPS位置情報特定 ＆ リバースジオコーディング ---
+        let savedLat = localStorage.getItem('dash-lat') || "35.0239";
+        let savedLng = localStorage.getItem('dash-lng') || "136.9106";
+        let savedCity = localStorage.getItem('dash-city') || "愛知県東海市";
+
+        function fetchLocationGPS() {
+            const btn = document.getElementById('gps-btn');
+            btn.textContent = "⏳ 位置計測中...";
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(async (pos) => {
+                    savedLat = pos.coords.latitude;
+                    savedLng = pos.coords.longitude;
+                    localStorage.setItem('dash-lat', savedLat);
+                    localStorage.setItem('dash-lng', savedLng);
+                    
+                    try {
+                        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${savedLat}&lon=${savedLng}&format=json&accept-language=ja`);
+                        if (res.ok) {
+                            const d = await res.json();
+                            const addr = d.address;
+                            savedCity = addr.city || addr.town || addr.village || addr.suburb || addr.city_district || "現在地周辺";
+                            localStorage.setItem('dash-city', savedCity);
+                        }
+                    } catch (e) { console.error("逆引きエラー", e); }
+                    
+                    document.getElementById('city-name-display').textContent = savedCity;
+                    fetchOpenMeteoWeather();
+                    btn.textContent = "📍 現在地を取得";
+                }, () => {
+                    alert("GPS取得に失敗しました。デフォルト設定で動かします。");
+                    btn.textContent = "📍 現在地を取得";
+                });
+            } else {
+                alert("このブラウザは位置情報に対応していません。");
+                btn.textContent = "📍 現在地を取得";
+            }
+        }
+
+        // --- 6. Open-Meteo 天気API連動 ---
+        const weatherCodes = {
+            0: "晴れ", 1: "主に晴れ", 2: "晴れ時々曇り", 3: "曇り",
+            45: "霧", 48: "沈着霧", 51: "小雨", 53: "小雨", 55: "小雨",
+            61: "雨", 63: "雨", 65: "強い雨", 71: "軽めの雪", 73: "雪", 75: "大雪",
+            95: "雷雨", 96: "雷雨と雹", 99: "激しい雷雨"
+        };
+        const weatherIcons = { "晴れ": "☀️", "主に晴れ": "🌤️", "晴れ時々曇り": "⛅", "曇り": "☁️", "霧": "🌫️", "小雨": "🌦️", "雨": "☔", "強い雨": "🌧️", "雷雨": "⛈️" };
+
+        async function fetchOpenMeteoWeather() {
+            try {
+                document.getElementById('city-name-display').textContent = savedCity;
+                const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${savedLat}&longitude=${savedLng}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&timezone=Asia%2FTokyo`);
+                if (!res.ok) return;
+                const data = await res.json();
+                const cur = data.current;
+                const txt = weatherCodes[cur.weather_code] || "曇り";
+                
+                document.getElementById('weather-text').textContent = txt;
+                document.getElementById('weather-icon').textContent = weatherIcons[txt] || "☁️";
+                document.getElementById('w-temp').textContent = cur.temperature_2m.toFixed(1);
+                document.getElementById('w-humidity').textContent = cur.relative_humidity_2m;
+                document.getElementById('w-wind').textContent = cur.wind_speed_10m.toFixed(1);
+            } catch (e) { console.error("天気読み込みエラー", e); }
+        }
+        fetchOpenMeteoWeather();
+        setInterval(fetchOpenMeteoWeather, 600000);
+
+        // --- 7. NHKニュースRSSフィード連携 ---
+        async function fetchNHKNews() {
+            try {
+                const res = await fetch('https://api.allorigins.win/get?url=' + encodeURIComponent('https://www.nhk.or.jp/rss/news/cat0.xml'));
+                if (!res.ok) return;
+                const rawData = await res.json();
+                const parser = new DOMParser();
+                const xml = parser.parseFromString(rawData.contents, "text/xml");
+                const items = xml.querySelectorAll("item");
+                const list = document.getElementById('news-list');
+                list.innerHTML = '';
+
+                for (let i = 0; i < Math.min(items.length, 4); i++) {
+                    const title = items[i].querySelector("title").textContent;
+                    const pubDate = new Date(items[i].querySelector("pubDate").textContent);
+                    const timeStr = `${String(pubDate.getHours()).padStart(2, '0')}:${String(pubDate.getMinutes()).padStart(2, '0')}`;
+                    
+                    const li = document.createElement('li');
+                    li.className = 'news-item';
+                    li.innerHTML = `
+                        <div class="news-meta"><span class="news-tag">速報</span><span class="news-time">${timeStr}</span></div>
+                        <div class="news-title">${title}</div>
+                    `;
+                    list.appendChild(li);
+                }
+            } catch (e) { console.error("ニュース同期エラー", e); }
+        }
+        fetchNHKNews();
+        setInterval(fetchNHKNews, 300000);
+    </script>
+</body>
+</html>
